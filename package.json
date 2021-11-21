@@ -1,0 +1,37 @@
+{
+  "name": "aave-indexer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "job:get-amm-users": "env-cmd -f .env ts-node ./src/indexers/pools/mainnet-amm.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sendra/aave-indexer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sendra/aave-indexer/issues"
+  },
+  "homepage": "https://github.com/sendra/aave-indexer#readme",
+  "devDependencies": {
+    "@types/node": "^16.11.9",
+    "@typescript-eslint/eslint-plugin": "^5.4.0",
+    "@typescript-eslint/parser": "^5.4.0",
+    "eslint": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "2.4.1",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.2"
+  },
+  "dependencies": {
+    "@aave/contract-helpers": "^0.26.1",
+    "bignumber.js": "^9.0.1",
+    "env-cmd": "^10.1.0",
+    "ethers": "5.4.7",
+    "reflect-metadata": "^0.1.13"
+  }
+}

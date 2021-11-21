@@ -1,0 +1,44 @@
+version: "3.5"
+
+x-common-environment:
+  &common-environment
+  image: node:14
+  build:
+    context: ./
+  working_dir: /app
+  volumes:
+    - ./:/app
+  restart: on-failure
+  env_file:
+    - ./.env
+  # environment:
+  #   RPC_URL: ""
+  #   RPC_MAX_TIMEOUT: 1000
+
+  # depends_on:
+  #   - mongo
+  #   - redis
+
+services:
+  # api:
+  #   <<: *common-environment
+  #   ports:
+  #     - 3000:3000
+  #   command: "npm run start"
+
+  amm-users:
+    <<: *common-environment
+    command: "npm run job:get-amm-users"
+
+  # mongodb:
+  #   image: mongo:4.4
+  #   volumes:
+  #     - type: volume
+  #       source: mongo-data
+  #       target: /data/db
+  #   ports:
+  #     - target: 27017
+  #       published: 27017
+
+  # redis:
+  #   image: redis:alpine
