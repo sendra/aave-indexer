@@ -32,6 +32,7 @@
     "bignumber.js": "^9.0.1",
     "env-cmd": "^10.1.0",
     "ethers": "5.4.7",
+    "mongoose": "^6.0.13",
     "reflect-metadata": "^0.1.13"
   }
 }

@@ -31,14 +31,12 @@ export class AmmPool extends BasePoolIndexer {
   }
 
   public startJobs = async () => {
-    console.log('------------------');
     // get reserves to get subtoken addresses
     const reserves: ReservesDataHumanized =
       await this.uiPoolDataProvider.getReservesHumanized(
         this.poolAddressProvider,
       );
 
-    console.log('------------------ ');
     reserves.reservesData.forEach((reserve: ReserveDataHumanized) => {
       const aTokenContract = IERC20__factory.connect(
         reserve.aTokenAddress,
@@ -58,7 +56,9 @@ export class AmmPool extends BasePoolIndexer {
       this.vTokens.push(vTokenContract);
     });
     // start method to listen to users that are using amm
-    const aPromises = this.aTokens.map(this.transferEventGetterJob);
+    const aPromises = this.aTokens.map((contract: IERC20) =>
+      this.transferEventGetterJob(contract, 'aToken'),
+    );
     // const sPromises = this.sTokens.map(this.transferEventGetterJob);
     // const vPromises = this.vTokens.map(this.transferEventGetterJob);
 
@@ -67,14 +67,6 @@ export class AmmPool extends BasePoolIndexer {
       // ...sPromises, ...vPromises
     ]);
     console.log('test');
-  };
-
-  public transferEventGetterJob = async (contract: IERC20): Promise<void> => {
-    const event = contract.filters.Transfer();
-    const fromBlock = 0;
-
-    const eventLogs = await contract.queryFilter(event, fromBlock, 'latest');
-    console.log('eventLogs length: ', eventLogs.length);
   };
 }
 
