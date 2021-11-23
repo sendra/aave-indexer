@@ -57,7 +57,7 @@ export class AmmPool extends BasePoolIndexer {
     });
     // start method to listen to users that are using amm
     const aPromises = this.aTokens.map((contract: IERC20) =>
-      this.transferEventGetterJob(contract, 'aToken'),
+      this.transferEventGetterJob(contract),
     );
     // const sPromises = this.sTokens.map(this.transferEventGetterJob);
     // const vPromises = this.vTokens.map(this.transferEventGetterJob);

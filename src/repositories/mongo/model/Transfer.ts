@@ -1,15 +1,13 @@
-import { ObjectId } from 'mongodb';
 import { BigNumber } from 'ethers';
 import mongoose from 'mongoose';
-import BaseDomain, { BaseDomainInterface } from '../domain/BaseDomain';
 
 export type TransactionArgs = {
   from: string;
   to: string;
-  value: BigNumber;
+  value: string;
 };
 
-export type TransferModel = {
+export type TransferType = {
   blockNumber: number;
   blockHash: string;
   transactionIndex: number;
@@ -25,7 +23,7 @@ export type TransferModel = {
 };
 
 export interface TransferModelInterface
-  extends TransferModel,
+  extends TransferType,
     mongoose.Document {}
 
 const transferSchema = new mongoose.Schema({
@@ -43,20 +41,10 @@ const transferSchema = new mongoose.Schema({
   args: {
     from: { type: String },
     to: { type: String },
-    value: { type: BigNumber },
+    value: { type: String },
   },
 });
 
 const transferModel: mongoose.Model<TransferModelInterface> =
   mongoose.model<TransferModelInterface>('rate', transferSchema);
 export default transferModel;
-
-export type TransferDomainInterface = BaseDomainInterface<
-  TransferModel,
-  TransferModelInterface
->;
-
-export const transferDomain: TransferDomainInterface = new BaseDomain<
-  TransferModel,
-  TransferModelInterface
->(transferModel);
