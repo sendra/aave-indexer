@@ -24,7 +24,7 @@ services:
     command: "npm run job:get-amm-users"
 
   mongodb:
-    image: mongo:4.4
+    image: mongo:5.0
     volumes:
       - type: volume
         source: mongo-data

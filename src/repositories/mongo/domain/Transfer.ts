@@ -6,7 +6,7 @@ import BaseDomain, { BaseDomainInterface } from './BaseDomain';
 
 export interface TransferDomainInterface
   extends BaseDomainInterface<TransferType, TransferModelInterface> {
-  getRecordByAddress: (address: string) => Promise<TransferType | null>;
+  getRecordByAddress: (address: string) => Promise<TransferType>;
   updateTransfersInBulk: (transferLogs: TransferType[]) => Promise<void>;
 }
 

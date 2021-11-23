@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "job:get-amm-users": "env-cmd -f .env ts-node ./src/indexers/pools/mainnet-amm.ts"
+    "index:transfers": "env-cmd -f .env ts-node ./src/indexers/index.ts"
   },
   "repository": {
     "type": "git",

@@ -46,5 +46,5 @@ const transferSchema = new mongoose.Schema({
 });
 
 const transferModel: mongoose.Model<TransferModelInterface> =
-  mongoose.model<TransferModelInterface>('Transfer', transferSchema);
+  mongoose.model<TransferModelInterface>('transfer', transferSchema);
 export default transferModel;

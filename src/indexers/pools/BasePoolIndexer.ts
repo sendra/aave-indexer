@@ -27,7 +27,10 @@ export default class BasePoolIndexer implements BasePoolIndexerInterface {
     this.provider = new providers.FallbackProvider(rpcProviders);
   }
 
-  public transferEventGetterJob = async (contract: IERC20): Promise<void> => {
+  public transferEventGetterJob = async (
+    contract: IERC20,
+    logsCount = 0,
+  ): Promise<void> => {
     // get last block number from db
     await MongoDB.connect();
     const lastTokenTransfer = await transferDomain.getRecordByAddress(
@@ -38,7 +41,7 @@ export default class BasePoolIndexer implements BasePoolIndexerInterface {
       // TODO: do we repeat lastBlockNumber to make sure we dont forget anything? or increase by one?
       fromBlock = lastTokenTransfer.blockNumber;
     }
-    console.log(contract.address.toLowerCase(), ' last block:: ', fromBlock);
+
     const event = contract.filters.Transfer();
 
     const eventLogs: TransferType[] = await contract.queryFilter(
@@ -46,16 +49,20 @@ export default class BasePoolIndexer implements BasePoolIndexerInterface {
       fromBlock,
       'latest',
     );
-    console.log('eventLogs length: ', eventLogs.length);
 
     // save on db
     await transferDomain.updateTransfersInBulk(eventLogs);
 
     // check if max log amount reached
     if (eventLogs.length < 10000) {
+      console.log(
+        contract.address.toLowerCase(),
+        ': eventLogs Count: ',
+        logsCount + eventLogs.length,
+      );
       return;
     }
 
-    return this.transferEventGetterJob(contract);
+    return this.transferEventGetterJob(contract, logsCount + eventLogs.length);
   };
 }
