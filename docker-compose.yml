@@ -4,22 +4,24 @@ volumes:
   mongo-data:
 
     null
-x-base-service:
-  &base-service
+x-common-environment:
+  &common-environment
   image: node:16
   working_dir: /app
   volumes:
-    - ./src:/app
+    - ./:/app
   restart: on-failure
   env_file:
-    - .env
+    - ./.env
   depends_on:
+    - mongodb
+  links:
     - mongodb
 
 services:
-  # amm-users:
-  #   <<: *base-service
-  #   command: "npm run job:get-amm-users"
+  amm-users:
+    <<: *common-environment
+    command: "npm run job:get-amm-users"
 
   mongodb:
     image: mongo:4.4

@@ -19,10 +19,6 @@ export default class BasePoolIndexer implements BasePoolIndexerInterface {
   readonly provider: providers.Provider;
 
   constructor() {
-    // { poolAddress, startingBlock }: Config
-    // this.poolAddress = poolAddress;
-    // this.startingBlock = startingBlock ?? 0;
-
     const rpcUrls = process.env.RPC_URLS ?? '';
 
     const rpcProviders: providers.Provider[] = rpcUrls
@@ -34,13 +30,15 @@ export default class BasePoolIndexer implements BasePoolIndexerInterface {
   public transferEventGetterJob = async (contract: IERC20): Promise<void> => {
     // get last block number from db
     await MongoDB.connect();
-    const lastTokenTransfer = await transferDomain.getRecord();
+    const lastTokenTransfer = await transferDomain.getRecordByAddress(
+      contract.address,
+    );
     let fromBlock = 0;
     if (lastTokenTransfer) {
       // TODO: do we repeat lastBlockNumber to make sure we dont forget anything? or increase by one?
       fromBlock = lastTokenTransfer.blockNumber;
     }
-
+    console.log(contract.address.toLowerCase(), ' last block:: ', fromBlock);
     const event = contract.filters.Transfer();
 
     const eventLogs: TransferType[] = await contract.queryFilter(
@@ -48,7 +46,7 @@ export default class BasePoolIndexer implements BasePoolIndexerInterface {
       fromBlock,
       'latest',
     );
-    console.log('eventLogs length: ', eventLogs[0]);
+    console.log('eventLogs length: ', eventLogs.length);
 
     // save on db
     await transferDomain.updateTransfersInBulk(eventLogs);

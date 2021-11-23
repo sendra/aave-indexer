@@ -17,43 +17,36 @@ class TransferDomain
   public async getRecordByAddress(address: string): Promise<TransferType> {
     const blockedAddress = await this.DataModel.findOne({
       address: address.toLowerCase(),
-    });
+    }).sort({ blockNumber: 'desc' });
     return blockedAddress;
   }
 
   public async updateTransfersInBulk(
     transferLogs: TransferType[],
   ): Promise<void> {
-    const bulk = transferLogs.map(
-      ({
-        address,
-        blockNumber,
-        blockHash,
-        transactionIndex,
-        transactionHash,
-        logIndex,
-        args,
-      }) => ({
-        updateOne: {
-          filter: {
-            address: address.toLowerCase(),
-            blockNumber,
-            blockHash,
-            transactionIndex,
-            transactionHash,
-            logIndex,
-          },
-          update: {
-            $set: {
-              args: {
-                value: args.value.toString(),
-              },
+    const bulk = transferLogs.map((transferLog: TransferType) => ({
+      updateOne: {
+        filter: {
+          address: transferLog.address.toLowerCase(),
+          blockNumber: transferLog.blockNumber,
+          blockHash: transferLog.blockHash,
+          transactionIndex: transferLog.transactionIndex,
+          transactionHash: transferLog.transactionHash,
+          logIndex: transferLog.logIndex,
+        },
+        update: {
+          $set: {
+            ...transferLog,
+            address: transferLog.address.toLowerCase(),
+            args: {
+              ...transferLog.args,
+              value: transferLog.args.value.toString(),
             },
           },
-          upsert: true,
         },
-      }),
-    );
+        upsert: true,
+      },
+    }));
 
     await this.DataModel.collection.bulkWrite(bulk);
   }
