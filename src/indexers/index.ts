@@ -14,12 +14,15 @@ class Indexer {
 
     Object.keys(configByChainId).forEach((chainId) => {
       const rpcUrls = process.env[`RPCS_${Number(chainId)}`];
-      const rpcProviders: providers.Provider[] = rpcUrls
-        .split(',')
-        .map((rpc: string) => new providers.JsonRpcProvider(rpc));
-      this.providersByChainId[chainId] = new providers.FallbackProvider(
-        rpcProviders,
+      // const rpcProviders: providers.Provider[] = rpcUrls
+      //   .split(',')
+      //   .map((rpc: string) => new providers.JsonRpcProvider(rpc));
+      this.providersByChainId[chainId] = new providers.StaticJsonRpcProvider(
+        rpcUrls,
       );
+      // new providers.FallbackProvider(
+      //   rpcProviders,
+      // );
     });
   }
 

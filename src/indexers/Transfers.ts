@@ -4,7 +4,7 @@ import {
   ReservesDataHumanized,
   ReserveDataHumanized,
 } from '@aave/contract-helpers';
-import { providers } from 'ethers';
+import { providers, utils } from 'ethers';
 import transferDomain from '../repositories/mongo/domain/Transfer';
 import { TransferType } from '../repositories/mongo/model/Transfer';
 import { IERC20, IERC20__factory } from '../contracts';
@@ -46,6 +46,7 @@ export class TransferIndexer {
 
   public startIndexing = async () => {
     // get reserves to get subtoken addresses
+
     const reserves: ReservesDataHumanized =
       await this.uiPoolDataProvider.getReservesHumanized(
         this.poolAddressProviderAddress,
@@ -69,6 +70,7 @@ export class TransferIndexer {
       this.sTokens.push(sTokenContract);
       this.vTokens.push(vTokenContract);
     });
+
     // start method to listen to users that are using amm
     const aPromises = this.aTokens.map((contract: IERC20) =>
       this.transferEventGetterJob(contract),
@@ -83,8 +85,70 @@ export class TransferIndexer {
     await Promise.allSettled([...aPromises, ...sPromises, ...vPromises]);
   };
 
+  // get the transfer logs without sending toBlock
   public transferEventGetterJob = async (
     contract: IERC20,
+    count = 0,
+    logsCount = 0,
+  ): Promise<void> => {
+    try {
+      // get last block number from db
+      const lastTokenTransfer = await transferDomain.getRecordByAddress(
+        contract.address,
+      );
+
+      let fromBlock = 0;
+      if (lastTokenTransfer) {
+        // TODO: do we repeat lastBlockNumber to make sure we dont forget anything? or increase by one?
+        fromBlock = lastTokenTransfer.blockNumber;
+      }
+      // console.log('from block: ', fromBlock);
+      // const event = contract.filters.Transfer();
+      const topicId = utils.id('Transfer(address,address,uint256)');
+      // const eventLogs = await contract.queryFilter(event, fromBlock);
+      let eventLogs: TransferType[] = [];
+      try {
+        eventLogs = (await this.provider.getLogs({
+          fromBlock,
+          toBlock: 21748922,
+          address: contract.address,
+          topics: [topicId],
+        })) as TransferType[];
+      } catch (error) {
+        console.log(contract.address, ' error code: ', error.error?.code);
+      }
+      // console.log('events length: ', eventLogs.length);
+
+      // save on db
+      if (eventLogs.length > 0) {
+        await transferDomain.insertRawTransferLogsInBulk([eventLogs[0]]);
+      }
+
+      // check if max log amount reached
+      if (eventLogs.length < 9999) {
+        console.log(
+          contract.address.toLowerCase(),
+          ': eventLogs Count: ',
+          eventLogs.length + logsCount,
+          ' count: ',
+          count,
+        );
+        return;
+      }
+
+      return this.transferEventGetterJob(
+        contract,
+        count + 1,
+        logsCount + eventLogs.length,
+      );
+    } catch (error) {
+      console.log(contract.address, ' other error');
+    }
+  };
+
+  public transferEventGetterWithToBlockJob = async (
+    contract: IERC20,
+    count = 0,
     logsCount = 0,
   ): Promise<void> => {
     // get last block number from db
@@ -99,26 +163,29 @@ export class TransferIndexer {
     }
 
     const event = contract.filters.Transfer();
-
-    const eventLogs: TransferType[] = await contract.queryFilter(
-      event,
-      fromBlock,
-      'latest',
-    );
+    const toBlock = fromBlock + 1000;
+    const eventLogs = await contract.queryFilter(event, fromBlock, toBlock);
 
     // save on db
-    await transferDomain.updateTransfersInBulk(eventLogs);
-
+    await transferDomain.insertRawTransferLogsInBulk(eventLogs);
+    // console.log('events length: ', eventLogs.length);
     // check if max log amount reached
-    if (eventLogs.length < 10000) {
+    const currentBlock = await this.provider.getBlockNumber();
+    if (currentBlock < toBlock) {
       console.log(
         contract.address.toLowerCase(),
         ': eventLogs Count: ',
-        logsCount + eventLogs.length,
+        eventLogs.length + logsCount,
+        ' count: ',
+        count,
       );
       return;
     }
 
-    return this.transferEventGetterJob(contract, logsCount + eventLogs.length);
+    return this.transferEventGetterWithToBlockJob(
+      contract,
+      count + 1,
+      logsCount + eventLogs.length,
+    );
   };
 }

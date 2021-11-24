@@ -27,6 +27,7 @@ export interface TransferModelInterface
     mongoose.Document {}
 
 const transferSchema = new mongoose.Schema({
+  id: { type: String },
   blockNumber: { type: Number },
   blockHash: { type: String },
   transactionIndex: { type: Number },
@@ -44,6 +45,8 @@ const transferSchema = new mongoose.Schema({
     value: { type: String },
   },
 });
+
+transferSchema.index({ id: 1 }, { unique: true });
 
 const transferModel: mongoose.Model<TransferModelInterface> =
   mongoose.model<TransferModelInterface>('transfer', transferSchema);

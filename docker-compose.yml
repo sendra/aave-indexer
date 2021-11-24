@@ -19,9 +19,9 @@ x-common-environment:
     - mongodb
 
 services:
-  amm-users:
-    <<: *common-environment
-    command: "npm run job:get-amm-users"
+  # amm-users:
+  #   <<: *common-environment
+  #   command: "npm run job:get-amm-users"
 
   mongodb:
     image: mongo:5.0
