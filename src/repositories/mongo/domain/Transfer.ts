@@ -54,41 +54,71 @@ class TransferDomain
     await this.DataModel.collection.bulkWrite(bulk);
   }
 
-  public async insertRawTransferLogsInBulk(
+  public async upsertRawTransferLogsInBulk(
     transferLogs: TransferType[],
   ): Promise<void> {
     const bulk = transferLogs.map((transferLog: TransferType) => {
-      const decodedValue = utils.defaultAbiCoder.decode(
-        ['uint256'],
-        transferLog.data,
-      );
-      const decodedFrom = utils.defaultAbiCoder.decode(
-        ['address'],
-        transferLog.topics[1],
-      );
-
-      const decodedTo = utils.defaultAbiCoder.decode(
-        ['address'],
-        transferLog.topics[2],
-      );
       const id = `${transferLog.blockNumber}_${transferLog.blockHash}_${transferLog.transactionIndex}_${transferLog.transactionHash}_${transferLog.logIndex}`;
       return {
+        updateOne: {
+          filter: {
+            id,
+          },
+          update: {
+            $set: {
+              id,
+              ...transferLog,
+              address: transferLog.address.toLowerCase(),
+              args: {
+                ...transferLog.args,
+                value: transferLog.args.value.toString(),
+              },
+            },
+          },
+          upsert: true,
+        },
+      };
+    });
+
+    await this.DataModel.collection.bulkWrite(bulk, { ordered: false });
+  }
+
+  public async insertRawTransferLogsInBulk(
+    transferLogs: TransferType[],
+  ): Promise<void> {
+    const bulk = this.DataModel.collection.initializeUnorderedBulkOp();
+
+    transferLogs.map((transferLog: TransferType) => {
+      const id = `${transferLog.blockNumber}_${transferLog.blockHash}_${transferLog.transactionIndex}_${transferLog.transactionHash}_${transferLog.logIndex}`;
+      bulk.insert({
         insertOne: {
           document: {
             id,
             ...transferLog,
             address: transferLog.address.toLowerCase(),
             args: {
-              from: decodedFrom[0],
-              to: decodedTo[0],
-              value: decodedValue.toString(),
+              ...transferLog.args,
+              value: transferLog.args.value.toString(),
             },
           },
         },
-      };
+      });
     });
-    if (bulk.length > 0) {
-      await this.DataModel.collection.bulkWrite(bulk, { ordered: false });
+    if (transferLogs.length > 0) {
+      // await this.DataModel.collection.bulkWrite(bulk, { ordered: false });
+      // try {
+      await bulk.execute();
+      // } catch (error) {
+      //   console.log(
+      //     'Total length: ',
+      //     transferLogs.length,
+      //     ' Not inserted: ',
+      //     error.result.result.writeErrors.length,
+      //     ' inserted: ',
+      //     error.result.result.insertedIds.length,
+      //   );
+      //   return;
+      // }
     }
   }
 }

@@ -88,6 +88,8 @@ export class TransferIndexer {
   // get the transfer logs without sending toBlock
   public transferEventGetterJob = async (
     contract: IERC20,
+    fromBlock = 0,
+    blockOffset = 1000000,
     count = 0,
     logsCount = 0,
   ): Promise<void> => {
@@ -97,35 +99,70 @@ export class TransferIndexer {
         contract.address,
       );
 
-      let fromBlock = 0;
       if (lastTokenTransfer) {
         // TODO: do we repeat lastBlockNumber to make sure we dont forget anything? or increase by one?
         fromBlock = lastTokenTransfer.blockNumber;
       }
-      // console.log('from block: ', fromBlock);
-      // const event = contract.filters.Transfer();
-      const topicId = utils.id('Transfer(address,address,uint256)');
+
+      const currentBlockNumber = await this.provider.getBlockNumber();
+
+      const toBlock =
+        fromBlock + blockOffset > currentBlockNumber
+          ? currentBlockNumber
+          : fromBlock + blockOffset;
+
+      console.log(
+        contract.address,
+        ' iteration: ',
+        count,
+        'from: ',
+        fromBlock,
+        ' to: ',
+        toBlock,
+      );
+      const event = contract.filters.Transfer();
+      // const topicId = utils.id('Transfer(address,address,uint256)');
       // const eventLogs = await contract.queryFilter(event, fromBlock);
       let eventLogs: TransferType[] = [];
       try {
-        eventLogs = (await this.provider.getLogs({
+        eventLogs = (await contract.queryFilter(
+          event,
           fromBlock,
-          toBlock: 21748922,
-          address: contract.address,
-          topics: [topicId],
-        })) as TransferType[];
+          toBlock,
+        )) as TransferType[];
       } catch (error) {
         console.log(contract.address, ' error code: ', error.error?.code);
+        return this.transferEventGetterJob(
+          contract,
+          fromBlock,
+          Math.floor(blockOffset / 2),
+          count + 1,
+          logsCount + eventLogs.length,
+        );
       }
       // console.log('events length: ', eventLogs.length);
 
       // save on db
       if (eventLogs.length > 0) {
-        await transferDomain.insertRawTransferLogsInBulk([eventLogs[0]]);
+        try {
+          await transferDomain.insertRawTransferLogsInBulk(eventLogs);
+        } catch (error) {
+          await transferDomain.upsertRawTransferLogsInBulk(eventLogs);
+        }
       }
 
       // check if max log amount reached
-      if (eventLogs.length < 9999) {
+      // console.log('currentBlockNumber: ', currentBlockNumber);
+
+      // if (currentBlockNumber > fromBlock) {
+      //   return this.transferEventGetterJob(
+      //     contract,
+      //     count + 1,
+      //     logsCount + eventLogs.length,
+      //   );
+      // }
+
+      if (eventLogs.length < 9999 && toBlock === currentBlockNumber) {
         console.log(
           contract.address.toLowerCase(),
           ': eventLogs Count: ',
@@ -138,11 +175,13 @@ export class TransferIndexer {
 
       return this.transferEventGetterJob(
         contract,
+        toBlock,
+        blockOffset,
         count + 1,
         logsCount + eventLogs.length,
       );
     } catch (error) {
-      console.log(contract.address, ' other error');
+      console.log(contract.address, ' other error: ', error);
     }
   };
 
