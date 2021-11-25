@@ -1,5 +1,8 @@
 import { providers } from 'ethers';
 import { exit } from 'process';
+import InsertAggregator, {
+  InsertAggregatorInterface,
+} from '../repositories/mongo/insertAggregator';
 import { configByChainId } from '../config/constants';
 import MongoDB, { MongoDBInterface } from '../repositories/mongo/connection';
 import { TransferIndexer } from './Transfers';
@@ -28,10 +31,14 @@ class Indexer {
 
   public startIndexers = async () => {
     await this.mongodb.connect();
-    await this.startTransferIndexers();
+    const insertAggregator = new InsertAggregator();
+    await this.startTransferIndexers(insertAggregator);
+    await this.startInsertAggregator(insertAggregator);
   };
 
-  public startTransferIndexers = async () => {
+  public startTransferIndexers = async (
+    insertAggregator: InsertAggregatorInterface,
+  ) => {
     const indexingPromises = [];
 
     Object.keys(this.providersByChainId).forEach((chainId) => {
@@ -43,12 +50,19 @@ class Indexer {
           poolAddressProvider,
           uiPoolDataProvider,
           provider,
+          insertAggregator,
         });
         indexingPromises.push(transferIndexer.startIndexing());
       });
     });
 
     await Promise.allSettled(indexingPromises);
+  };
+
+  public startInsertAggregator = async (
+    insertAggregator: InsertAggregatorInterface,
+  ): Promise<void> => {
+    await insertAggregator.initializeWatcher();
   };
 }
 

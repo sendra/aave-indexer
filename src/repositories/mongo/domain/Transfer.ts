@@ -1,5 +1,3 @@
-import { utils } from 'ethers';
-import mongoose from 'mongoose';
 import transferModel, {
   TransferType,
   TransferModelInterface,
@@ -11,6 +9,10 @@ export interface TransferDomainInterface
   getRecordByAddress: (address: string) => Promise<TransferType>;
   updateTransfersInBulk: (transferLogs: TransferType[]) => Promise<void>;
   insertRawTransferLogsInBulk: (transferLogs: TransferType[]) => Promise<void>;
+  upsertRawTransferLogsInBulk: (transferLogs: TransferType[]) => Promise<void>;
+  insertManyRawTransferLogsInBulk: (
+    transferLogs: TransferType[],
+  ) => Promise<void>;
 }
 
 class TransferDomain
@@ -80,7 +82,31 @@ class TransferDomain
       };
     });
 
-    await this.DataModel.collection.bulkWrite(bulk, { ordered: false });
+    if (transferLogs.length > 0) {
+      await this.DataModel.collection.bulkWrite(bulk, { ordered: false });
+    }
+  }
+
+  public async insertManyRawTransferLogsInBulk(
+    transferLogs: TransferType[],
+  ): Promise<void> {
+    const logs = transferLogs.map((transferLog: TransferType) => {
+      const id = `${transferLog.blockNumber}_${transferLog.blockHash}_${transferLog.transactionIndex}_${transferLog.transactionHash}_${transferLog.logIndex}`;
+      return {
+        id,
+        ...transferLog,
+        address: transferLog.address.toLowerCase(),
+        args: {
+          ...transferLog.args,
+          value: transferLog.args.value.toString(),
+        },
+      };
+    });
+    if (transferLogs.length > 0) {
+      await this.DataModel.collection.insertMany(logs, {
+        ordered: false,
+      });
+    }
   }
 
   public async insertRawTransferLogsInBulk(
@@ -105,20 +131,7 @@ class TransferDomain
       });
     });
     if (transferLogs.length > 0) {
-      // await this.DataModel.collection.bulkWrite(bulk, { ordered: false });
-      // try {
-      await bulk.execute();
-      // } catch (error) {
-      //   console.log(
-      //     'Total length: ',
-      //     transferLogs.length,
-      //     ' Not inserted: ',
-      //     error.result.result.writeErrors.length,
-      //     ' inserted: ',
-      //     error.result.result.insertedIds.length,
-      //   );
-      //   return;
-      // }
+      await bulk.execute({ ordered: false });
     }
   }
 }
