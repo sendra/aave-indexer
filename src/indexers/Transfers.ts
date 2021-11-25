@@ -173,20 +173,18 @@ export class TransferIndexer {
         eventLogs.length,
       );
 
-      // TODO: should we really await??
-      await this.insertAggregator.queueLogs(eventLogs);
+      this.insertAggregator.queueLogs(eventLogs);
 
       if (eventLogs.length < 9999 && toBlock === undefined) {
         // We trigger insert so as to not have to wait until we reach
         // max batch size when a reserve indexing is done
-        // TODO: is this accurate enough???
         await this.insertAggregator.triggerInsert();
 
         console.log(
           contract.address.toLowerCase(),
           ': eventLogs Count: ',
           eventLogs.length + logsCount,
-          ' count: ',
+          ' iteration: ',
           iteration,
         );
         return;

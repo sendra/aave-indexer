@@ -5,7 +5,7 @@ const MAX_BATCH_SIZE = 100000;
 const INSERT_TIMEOUT = 1000;
 
 export interface InsertAggregatorInterface {
-  queueLogs: (logs: TransferType[]) => Promise<void>;
+  queueLogs: (logs: TransferType[]) => void;
   triggerInsert: () => Promise<void>;
   initializeWatcher: () => Promise<void>;
 }
@@ -26,7 +26,9 @@ export default class InsertAggregator implements InsertAggregatorInterface {
     const insertLogsQueued = async () => {
       try {
         // TODO: add logic here
-
+        if (this.queueLogs.length >= MAX_BATCH_SIZE) {
+          await this.triggerInsert();
+        }
         return setTimeout(insertLogsQueued, INSERT_TIMEOUT);
       } catch (error) {
         // TODO: do something with the error
@@ -43,7 +45,7 @@ export default class InsertAggregator implements InsertAggregatorInterface {
    * @param logs Array of logs to insert
    * @returns
    */
-  public queueLogs = async (logs: TransferType[]): Promise<void> => {
+  public queueLogsOld = async (logs: TransferType[]): Promise<void> => {
     const batchSize = this.logsQueue.length + logs.length;
     console.log('Batch size: ', batchSize);
     if (batchSize >= MAX_BATCH_SIZE) {
@@ -61,23 +63,34 @@ export default class InsertAggregator implements InsertAggregatorInterface {
   };
 
   /**
+   * Queues logs and if batch limit is reached it calls the insert method
+   * @param logs Array of logs to insert
+   * @returns
+   */
+  public queueLogs = (logs: TransferType[]): void => {
+    this.logsQueue.push(...logs);
+    console.log('Batch size: ', this.logsQueue.length);
+  };
+
+  /**
    * Log insert method. Tries to insert with insertMany.
    * If error of keys already existing tries to upsert
    */
   public triggerInsert = async (): Promise<void> => {
     // TODO: investigate the error of repeated key, as with unordererd this should not happen
     // upsert is quite slow as it needs to check by id
+    const insertLogs = this.logsQueue.splice(0, MAX_BATCH_SIZE);
+    console.log('Batch size after index: ', this.logsQueue.length);
+
     const timestamp = Date.now();
     console.time(`insert: ${timestamp}`);
     try {
-      await transferDomain.insertManyRawTransferLogsInBulk(this.logsQueue);
-      // await transferDomain.insertRawTransferLogsInBulk(this.logsQueue);
+      await transferDomain.insertManyRawTransferLogsInBulk(insertLogs);
     } catch (error) {
       console.log('Error inserting: ', error.code);
-      await transferDomain.upsertRawTransferLogsInBulk(this.logsQueue);
+      await transferDomain.upsertRawTransferLogsInBulk(insertLogs);
     }
 
     console.timeEnd(`insert: ${timestamp}`);
-    this.logsQueue.length = 0;
   };
 }
